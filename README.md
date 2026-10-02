@@ -18,13 +18,12 @@ When it detects a *lite* task (boilerplate, simple CRUD, small refactor, tests, 
 
 ## What's inside
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `server.mjs` | MCP server (Node, **zero dependencies**). Tools: `opencode_delegate`, `opencode_models`, `opencode_doctor` |
+| `src/server.mjs` | MCP server (Node, **zero dependencies**). Tools: `opencode_delegate`, `opencode_models`, `opencode_doctor` |
+| `bin/cli.mjs` | CLI: `init`, `serve`, `doctor`, `uninstall` |
 | `templates/.cursor/rules/opencode-delegate.mdc` | Rule: teaches Cursor when to delegate (LITE vs HEAVY) and how to review |
 | `templates/.cursor/commands/*.md` | Slash commands: `/delegate`, `/plan-and-delegate`, `/models` |
-| `install.mjs` | Cross-platform installer (registers MCP + copies rule/commands into your project) |
-| `test/` | Smoke test using a fake `opencode` binary |
 
 ## Requirements
 
@@ -37,49 +36,59 @@ When it detects a *lite* task (boilerplate, simple CRUD, small refactor, tests, 
   ```
 - **Cursor** with MCP support
 - Git recommended (the tool reports changed files after each run)
-- Windows: works, but WSL is more reliable for `opencode`.
 
-## Install
+## Install — pick one
 
-1. Unzip anywhere permanent (Cursor will run `server.mjs` from this path — don't delete the folder):
-   ```bash
-   unzip cursor-opencode-delegate.zip -d ~/tools
-   cd ~/tools/cursor-opencode-delegate
-   ```
-2. Install into your project:
-   ```bash
-   node install.mjs /path/to/your/project
-   ```
-   Options:
-   ```bash
-   node install.mjs /path/to/project --model opencode/<model-id>   # default model for delegated tasks
-   node install.mjs /path/to/project --agent build                 # default OpenCode agent
-   node install.mjs /path/to/project --global                      # register MCP for ALL projects (~/.cursor/mcp.json)
-   node install.mjs /path/to/project --force                       # overwrite rule/commands
-   ```
-   This writes `.cursor/mcp.json`, `.cursor/rules/opencode-delegate.mdc`, `.cursor/commands/*.md`.
-3. **Restart Cursor** (or *Developer: Reload Window*), then open **Settings → Tools & MCP** and confirm
-   `opencode-delegate` is enabled (green dot, 3 tools).
-4. Verify in chat: *"Run the opencode_doctor tool"*.
-
-### Manual install (no installer)
-
-Add to `.cursor/mcp.json` in your project (or `~/.cursor/mcp.json` for global):
-
-```json
-{
-  "mcpServers": {
-    "opencode-delegate": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/cursor-opencode-delegate/server.mjs"],
-      "env": {
-        "OPENCODE_DELEGATE_CWD": "${workspaceFolder}"
-      }
-    }
-  }
-}
+### A) Global (recommended: fastest startup, works for every project)
+```bash
+npm install -g cursor-opencode-delegate
+cd /path/to/your/project
+cursor-opencode-delegate init
 ```
-Then copy `templates/.cursor/*` into your project's `.cursor/` folder.
+
+### B) Per project (version pinned in your repo)
+```bash
+cd /path/to/your/project
+npm install -D cursor-opencode-delegate
+npx cursor-opencode-delegate init
+```
+
+### C) No install (npx)
+```bash
+cd /path/to/your/project
+npx cursor-opencode-delegate init --mode npx
+```
+Cursor will then launch the server with `npx -y cursor-opencode-delegate@1 serve` (first start is slower).
+
+`init` writes:
+- `.cursor/mcp.json` — registers the MCP server (existing servers are preserved)
+- `.cursor/rules/opencode-delegate.mdc`
+- `.cursor/commands/{delegate,plan-and-delegate,models}.md`
+
+Then **restart Cursor**, open **Settings → Tools & MCP**, and confirm `opencode-delegate` is enabled (green dot, 3 tools).
+
+### `init` options
+```
+--mode <npx|global|local>   how Cursor launches the server (auto-detected by default)
+--user                      register in ~/.cursor/mcp.json (all projects) instead of the project
+--model <provider/model>    default model for delegated tasks
+--agent <name>              default OpenCode agent
+--no-rule                   only register MCP, skip rule + commands
+--force                     overwrite existing rule/command files
+```
+
+### Other commands
+```bash
+cursor-opencode-delegate doctor      # checks Node, OpenCode, models, git, MCP entry, rule
+cursor-opencode-delegate uninstall   # removes MCP entry, rule and commands from the project
+```
+
+### Update
+```bash
+npm update -g cursor-opencode-delegate        # global
+npm update cursor-opencode-delegate           # per project
+cursor-opencode-delegate init --force         # refresh the rule/commands (overwrites your edits!)
+```
 
 ## Using it
 
@@ -155,7 +164,7 @@ Returns OpenCode's output + `git status` / `git diff --stat`.
 
 | Problem | Fix |
 |---|---|
-| Red dot / server won't start | Run `node /path/to/server.mjs` in a terminal (should print "ready"). Check Node ≥ 18 and the absolute path in `mcp.json` |
+| Red dot / server won't start | Run `cursor-opencode-delegate doctor`, then `cursor-opencode-delegate serve` in a terminal (should print "ready" on stderr). In `global` mode make sure the command is on the PATH Cursor sees; otherwise re-run `init --mode local` |
 | `Could not find the "opencode" binary` | Cursor's PATH differs from your shell. Set `"OPENCODE_BIN": "/full/path/to/opencode"` in `env` (`which opencode` / `where opencode`) |
 | "No models found" | Run `opencode auth login` in a terminal |
 | Tool call times out in Cursor | Keep delegated tasks small, or lower `timeout_seconds`. The server sends progress heartbeats every 15s |
@@ -172,9 +181,12 @@ Returns OpenCode's output + `git status` / `git diff --stat`.
 ## Test
 
 ```bash
-node test/smoke.mjs      # uses a fake opencode binary, no network needed
+npm test      # MCP smoke test (fake opencode binary) + CLI tests; no network needed
 ```
 
 ## Uninstall
 
-Remove `opencode-delegate` from `mcp.json` and delete `.cursor/rules/opencode-delegate.mdc` and the three commands.
+```bash
+cursor-opencode-delegate uninstall
+npm rm -g cursor-opencode-delegate     # or: npm rm cursor-opencode-delegate
+```

@@ -15,7 +15,7 @@ fs.writeFileSync(wrapper, process.platform === 'win32'
   ? `@echo off\r\nnode "${fake}" %*\r\n`
   : `#!/bin/sh\nexec node "${fake}" "$@"\n`, { mode: 0o755 });
 
-const srv = spawn('node', [path.join(here, '..', 'server.mjs')], {
+const srv = spawn('node', [path.join(here, '..', 'src', 'server.mjs')], {
   env: { ...process.env, OPENCODE_BIN: wrapper, OPENCODE_DELEGATE_CWD: tmp },
   stdio: ['pipe', 'pipe', 'inherit'],
 });
