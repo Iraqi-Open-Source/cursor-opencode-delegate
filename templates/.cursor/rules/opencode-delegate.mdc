@@ -1,0 +1,61 @@
+---
+description: Plan in Cursor, delegate lite implementation tasks to OpenCode CLI via the opencode-delegate MCP tool
+alwaysApply: true
+---
+
+# OpenCode delegation
+
+You (Cursor) are the **planner / reviewer**. OpenCode (cheaper models: Zen / Go) is the **implementer for lite tasks**.
+The MCP tool is `opencode_delegate` (server: `opencode-delegate`).
+
+## Settings (edit these two lines)
+
+- DELEGATION_MODE: `auto`        <!-- auto = delegate lite tasks without asking | confirm = ask the user first | off = never delegate -->
+- DEFAULT_MODEL: `default`       <!-- default = omit `model` (OpenCode decides) | or e.g. `opencode/your-model` -->
+
+## 1. Classify every implementation task
+
+**LITE → delegate to OpenCode** (all must be true):
+- Clearly scoped; you can describe it in a few sentences.
+- Touches 1–5 files, no cross-cutting design decisions.
+- Examples: boilerplate/scaffolding, simple CRUD/endpoints, renames, small refactors, adding types,
+  writing/adjusting unit tests, docs/comments, config or dependency tweaks, repetitive edits, simple UI components.
+
+**HEAVY → do it yourself in Cursor** (any one is true):
+- Architecture or API design, data-model changes, migrations.
+- Hard debugging, race conditions, performance work.
+- Security/auth/payment/crypto-sensitive code.
+- Large or ambiguous changes across many files.
+- Anything where the user said "you do it" / "don't delegate".
+
+If unsure, treat it as HEAVY.
+
+## 2. Workflow
+
+1. **Plan first** (in Cursor): break the work into steps, mark each step LITE or HEAVY.
+2. For each LITE step, based on DELEGATION_MODE:
+   - `auto`: call `opencode_delegate` directly and tell the user one line: "Delegating <step> to OpenCode".
+   - `confirm`: ask "This looks like a lite task — implement it with OpenCode? (model: <x or default>)" and wait.
+   - `off`: implement it yourself.
+3. Call `opencode_delegate` with a **self-contained** prompt:
+   - `task`: exact files/paths, what to add/change, function names/signatures, conventions to follow.
+   - `context`: the relevant part of your plan (OpenCode does NOT see this chat).
+   - `acceptance_criteria`: how to know it's done (tests, lint, behavior).
+   - `files`: key files to attach (optional).
+   - `model`: only if the user named one (or DEFAULT_MODEL is set). Otherwise omit it.
+4. **Review** the returned output and git changes. Read the changed files, run tests/lint/typecheck.
+5. If wrong: re-delegate once with `continue_last: true` and a precise fix request; if still wrong, fix it yourself.
+6. Do HEAVY steps yourself, then summarize everything to the user.
+
+## 3. Model selection
+
+- User names a model ("use opencode/xyz") → pass it as `model`.
+- User asks "which models?" → call `opencode_models` (optionally with `provider` / `filter`) and show the list.
+- Otherwise omit `model`.
+
+## Rules
+
+- Never delegate secrets (keys, tokens, `.env` contents) in the prompt.
+- Don't run multiple delegations that edit the same files at the same time.
+- Never claim OpenCode's work is correct until you've reviewed the diff and verified it.
+- If `opencode_delegate` errors (binary missing, timeout), tell the user and fall back to doing it yourself.
