@@ -1,6 +1,6 @@
 {
   "name": "cursor-opencode-delegate",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Cursor MCP tool: plan in Cursor, delegate lite implementation tasks to OpenCode CLI (Zen / Go / any model).",
   "type": "module",
   "bin": {
